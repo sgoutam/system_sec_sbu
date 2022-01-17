@@ -1,0 +1,5 @@
+#!/bin/bash
+
+../../../pin -follow_execv -t obj-intel64/sanket_pintool_tls.so -- $1 $2 $3 $4;
+
+#cat $1.out;

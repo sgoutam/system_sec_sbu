@@ -1,0 +1,40 @@
+
+   Organize the buf as follows:
+
+  0:                    160:            240:      272:
+   --------------------------------------------------------------------------
+   | skip                   |attack_format  |params   |injected code         |
+   --------------------------------------------------------------------------
+
+   The "skip" consists of format directives whose purpose is to "move" the
+   argument pointer past "temp" on the stack, and past the initial part 
+   of the format string that contains the format directive. It repeats
+   %20g forty times. Since each %g will read a double off the stack, each
+   %20g will consume 8 bytes. So, when printf finishes up with the 40th
+   %20g, it would have passed 40*8 bytes = 320bytes. Of this, 80 bytes
+   are within temp, so the next argument that printf will read will
+   be from offset 320-80 = 240 bytes, i.e, the "params" part of buf. 
+   The next format directive that is used will correspond to the 
+   "attack_format" part of buf. 
+
+   "attack_format" will be %C1d%B1d%hhn%C2d%B2d%hhn%C3d%B3d%hhn%C4d%B4d%hhn 
+   where Ci and Bi stand for integers (which will be interpreted as minimum 
+   field width for printing.) The values of Ci should be such that the total
+   number of characters printed so far becomes a multiple of 256. B1..B4
+   correspond to the values of the 4 bytes in the value B that the attacker
+   wants to write. The address A for writing will be in the "params" part.
+   (We have made the simplifying assumption that Ci and Bi are large enough
+   that any integer will fit within that width. If this is not true, simply
+   add 256 to the desired value.)
+
+   "params" will consist of DC DC A1 DC DC A2 DC DC A3 DC DC A4, where DC is 
+   an arbitrary 4-byte value, and A1 through A4 correspond to the addresses
+   of the 4 bytes where B1 through B4 need to be written. Note that
+   since %hhn writes only a single byte, it is not necessary to worry 
+   about the order in which the 4 locations A1..A4 are written.
+
+   A1--A4 can correspond to the 4-bytes of a function pointer in GOT.
+   B1-B4 will correspond to the location of buf+272. Include a NOP sled
+   to account for uncertainty in the location of buf. B1-B4 should be
+   adjusted to reflect this uncertainty.
+
